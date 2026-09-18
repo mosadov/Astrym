@@ -47,7 +47,7 @@
 
 ## Установка
 
-###Windows 10/11
+Windows 10/11
 
 Установи Python 3.9+ с https://python.org (галочка «Add Python to PATH» при установке).
 
@@ -59,7 +59,7 @@ pip install -r requirements.txt
 python astrym.py selfcheck
 Для удобства можно поставить Windows Terminal — он даёт нормальный шрифт и цвета.
 
-###Linux (Debian / Ubuntu / Mint)
+Linux (Debian / Ubuntu / Mint)
 
 sudo apt update
 sudo apt install python3 python3-pip python3-venv git dnsutils
@@ -68,7 +68,7 @@ cd Astrym
 pip3 install -r requirements.txt
 python3 astrym.py selfcheck
 
-###Для Fedora / RHEL:
+Для Fedora / RHEL:
 
 sudo dnf install python3 python3-pip git bind-utils
 git clone https://github.com/mosadov/Astrym.git
@@ -76,7 +76,7 @@ cd Astrym
 pip3 install -r requirements.txt
 python3 astrym.py selfcheck
 
-###Для Arch / Manjaro:
+Для Arch / Manjaro:
 
 sudo pacman -S python python-pip git bind
 git clone https://github.com/mosadov/Astrym.git
@@ -94,7 +94,7 @@ pip3 install -r requirements.txt
 python3 astrym.py selfcheck
 На Apple Silicon (M1/M2/M3) всё работает без эмуляции — Python 3.11+ нативный.
 
-###Android (Termux)
+Android (Termux)
 
 Установи Termux из F-Droid (не из Google Play — там устаревшая версия).
 
