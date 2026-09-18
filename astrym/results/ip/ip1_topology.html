@@ -1,0 +1,427 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ASTRYM · 8.8.8.8</title>
+<script src="https://cdn.jsdelivr.net/npm/vis-network@9.1.6/standalone/umd/vis-network.min.js"></script>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body {
+    background: #000000;
+    color: #ffffff;
+    font-family: 'SF Mono', 'Menlo', 'Consolas', 'Courier New', monospace;
+    font-size: 13px;
+    overflow: hidden;
+    width: 100vw; height: 100vh;
+}
+
+/* ============ HEADER ============ */
+#report-header {
+    position: absolute;
+    top: 20px; left: 24px;
+    z-index: 10;
+    max-width: 50vw;
+    pointer-events: none;
+}
+#report-header h1 {
+    color: #a855f7;
+    font-size: 22px;
+    font-weight: 700;
+    letter-spacing: -0.3px;
+    margin-bottom: 6px;
+}
+#report-header .target {
+    color: #ffffff;
+    font-size: 18px;
+    word-break: break-all;
+    margin-bottom: 8px;
+}
+#report-header .tag {
+    color: #888888;
+    font-size: 10px;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+}
+
+/* ============ STATS ============ */
+#stats {
+    position: absolute;
+    top: 20px; right: 24px;
+    background: #080808;
+    border: 1px solid #2a2a2a;
+    padding: 10px 16px;
+    font-size: 11px;
+    color: #888888;
+    z-index: 10;
+    letter-spacing: 1px;
+}
+#stats b { color: #ffffff; }
+
+/* ============ LEGEND ============ */
+#legend {
+    position: absolute;
+    bottom: 20px; left: 24px;
+    background: #080808;
+    border: 1px solid #2a2a2a;
+    padding: 14px 18px;
+    font-size: 11px;
+    z-index: 10;
+    color: #888888;
+}
+#legend .row {
+    display: flex; align-items: center;
+    margin: 4px 0; letter-spacing: 1px;
+}
+#legend .dot {
+    width: 10px; height: 10px;
+    border-radius: 50%;
+    display: inline-block;
+    margin-right: 10px;
+    border: 1px solid #2a2a2a;
+}
+
+/* ============ DETAILS PANEL ============ */
+#details-panel {
+    position: absolute;
+    top: 20px; right: 24px;
+    width: 380px;
+    max-height: calc(100vh - 40px);
+    background: #080808;
+    border: 1px solid #2a2a2a;
+    padding: 20px;
+    overflow-y: auto;
+    display: none;
+    z-index: 20;
+}
+#details-panel .panel-header {
+    display: flex; justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 16px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid #2a2a2a;
+}
+#panel-title {
+    color: #a855f7;
+    font-size: 13px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    font-weight: 700;
+    word-break: break-all;
+    padding-right: 20px;
+}
+#close-btn {
+    color: #888888;
+    cursor: pointer;
+    background: none;
+    border: none;
+    font-size: 20px;
+    font-family: monospace;
+    line-height: 1;
+    padding: 0;
+}
+#close-btn:hover { color: #ffffff; }
+
+.node-info {
+    font-size: 12px;
+    line-height: 1.6;
+    color: #ffffff;
+}
+.node-info b { color: #a855f7; font-weight: 600; }
+
+.kv-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 12px 0;
+}
+.kv-table td {
+    padding: 8px 0;
+    border-bottom: 1px dashed #2a2a2a;
+    vertical-align: top;
+    font-size: 11px;
+}
+.kv-table tr:last-child td { border-bottom: none; }
+.kv-table td:first-child {
+    color: #888888;
+    width: 38%;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+}
+.kv-table td:last-child {
+    color: #ffffff;
+    word-break: break-all;
+}
+
+pre.raw {
+    background: #000000;
+    border: 1px solid #2a2a2a;
+    padding: 12px;
+    font-family: 'SF Mono', 'Menlo', 'Consolas', monospace;
+    font-size: 11px;
+    color: #ffffff;
+    overflow-x: auto;
+    line-height: 1.5;
+    margin-top: 10px;
+    max-height: 350px;
+}
+pre.raw .jk { color: #7ecfff; }
+pre.raw .js { color: #a8e6a0; }
+pre.raw .jn { color: #f0c674; }
+pre.raw .jb { color: #f78c6c; }
+
+.raw-label {
+    color: #888888;
+    font-size: 10px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    margin-top: 16px;
+    margin-bottom: 4px;
+    display: block;
+}
+
+/* ============ GRAPH ============ */
+#network-graph {
+    width: 100vw;
+    height: 100vh;
+    background: #000000;
+}
+
+/* ============ SCROLLBAR ============ */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: #000000; }
+::-webkit-scrollbar-thumb {
+    background: #2a2a2a;
+    border-radius: 0;
+}
+::-webkit-scrollbar-thumb:hover { background: #a855f7; }
+</style>
+</head>
+<body>
+
+<div id="report-header">
+    <h1>OSINT Report:</h1>
+    <div class="target">8.8.8.8</div>
+    <div class="tag">IP · TOPOLOGY · ASTRYM v</div>
+</div>
+
+<div id="stats">
+    <b id="node-count">0</b> NODES &nbsp;&middot;&nbsp; <b id="edge-count">0</b> EDGES
+    &nbsp;&middot;&nbsp; RISK <b id="risk-badge">-</b>
+</div>
+
+<div id="legend">
+    <div class="row"><span class="dot" style="background:#a855f7"></span>target</div>
+    <div class="row"><span class="dot" style="background:#7ecfff"></span>subdomain</div>
+    <div class="row"><span class="dot" style="background:#f0c674"></span>IP address</div>
+    <div class="row"><span class="dot" style="background:#8b7bb8"></span>meta (WHOIS, MX, NS)</div>
+    <div class="row"><span class="dot" style="background:#4ade80"></span>clean</div>
+    <div class="row"><span class="dot" style="background:#f87171"></span>threat / breach</div>
+</div>
+
+<div id="details-panel">
+    <div class="panel-header">
+        <div id="panel-title">Node</div>
+        <button id="close-btn" onclick="document.getElementById('details-panel').style.display='none'">&times;</button>
+    </div>
+    <div id="panel-content" class="node-info">
+        Click a node on the graph to inspect.
+    </div>
+</div>
+
+<div id="network-graph"></div>
+
+<script id="data-nodes" type="application/json">[{"id": "target", "label": "8.8.8.8", "group": "target", "color": {"background": "#a855f7", "border": "#2a2a2a", "highlight": {"background": "#a855f7", "border": "#a855f7"}}, "size": 30, "title": "<b>Target:<\/b> 8.8.8.8<br><b>Type:<\/b> ip", "raw": {"type": "ip", "target": "8.8.8.8", "generated_at": "2026-09-18T14:19:13.454777+00:00", "tool": "ASTRYM 8.1.0"}, "meta": {"target": "8.8.8.8", "type": "ip", "risk_score": 0, "risk_level": "?"}, "risk_level": "?"}, {"id": "whois", "label": "WHOIS", "group": "meta", "color": {"background": "#8b7bb8", "border": "#2a2a2a", "highlight": {"background": "#8b7bb8", "border": "#a855f7"}}, "size": 15, "title": "<b>WHOIS<\/b><br>Registrar: ?<br>Created: ?<br>Expires: ?", "raw": {"netrange": "8.8.8.0 - 8.8.8.255", "cidr": "8.8.8.0/24", "netname": "GOGL", "organization": "Google LLC (GOGL)", "regdate": "2023-12-28", "updated": "2023-12-28", "orgname": "Google LLC", "address": "1600 Amphitheatre Parkway", "country": "US"}, "meta": {"registrar": "?", "created": "?", "expires": "?"}}, {"id": "port:53", "label": ":53", "group": "ip", "color": {"background": "#f0c674", "border": "#2a2a2a", "highlight": {"background": "#f0c674", "border": "#a855f7"}}, "size": 15, "title": "<b>Open port<\/b>: 53", "raw": {"port": 53}, "meta": {"port": 53}}, {"id": "port:443", "label": ":443", "group": "ip", "color": {"background": "#f0c674", "border": "#2a2a2a", "highlight": {"background": "#f0c674", "border": "#a855f7"}}, "size": 15, "title": "<b>Open port<\/b>: 443", "raw": {"port": 443}, "meta": {"port": 443}}]</script>
+<script id="data-edges" type="application/json">[{"from": "target", "to": "whois", "label": "WHOIS", "color": {"color": "#8b7bb8", "highlight": "#a855f7", "hover": "#a855f7"}}, {"from": "target", "to": "port:53", "label": "port", "color": {"color": "#f0c674", "highlight": "#a855f7", "hover": "#a855f7"}}, {"from": "target", "to": "port:443", "label": "port", "color": {"color": "#f0c674", "highlight": "#a855f7", "hover": "#a855f7"}}]</script>
+<script>
+(function () {
+    var nodesData = JSON.parse(document.getElementById('data-nodes').textContent);
+    var edgesData = JSON.parse(document.getElementById('data-edges').textContent);
+
+    document.getElementById('node-count').innerText = nodesData.length;
+    document.getElementById('edge-count').innerText = edgesData.length;
+
+    var target = nodesData.find(function (n) { return n.group === 'target'; });
+    if (target && target.risk_level) {
+        var badge = document.getElementById('risk-badge');
+        badge.innerText = (target.risk_level || '-').toUpperCase();
+        if (target.risk_level === 'CRITICAL' || target.risk_level === 'HIGH') {
+            badge.style.color = '#f87171';
+        } else if (target.risk_level === 'MEDIUM') {
+            badge.style.color = '#fbbf24';
+        } else if (target.risk_level === 'LOW' || target.risk_level === 'CLEAN') {
+            badge.style.color = '#4ade80';
+        }
+    }
+
+    if (typeof vis === 'undefined') {
+        document.body.innerHTML =
+            '<div style="color:#f87171;padding:40px;font-family:monospace;font-size:14px">' +
+            'ERROR: vis-network not loaded.<br>' +
+            'Check internet or download CDN locally.<br><br>' +
+            'CDN: https://cdn.jsdelivr.net/npm/vis-network@9.1.6/standalone/umd/vis-network.min.js</div>';
+        return;
+    }
+
+    var container = document.getElementById('network-graph');
+    var data = {
+        nodes: new vis.DataSet(nodesData),
+        edges: new vis.DataSet(edgesData)
+    };
+
+    var options = {
+        nodes: {
+            shape: 'dot',
+            font: {
+                color: '#ffffff',
+                size: 12,
+                face: 'Menlo, Consolas, monospace',
+                strokeWidth: 3,
+                strokeColor: '#000000',
+                vadjust: -2
+            },
+            borderWidth: 1,
+            borderWidthSelected: 2,
+            shadow: {
+                enabled: true,
+                color: 'rgba(168, 85, 247, 0.18)',
+                size: 8,
+                x: 0, y: 0
+            },
+            chosen: true
+        },
+        edges: {
+            color: {
+                color: '#2a2a2a',
+                highlight: '#a855f7',
+                hover: '#a855f7',
+                opacity: 1.0
+            },
+            width: 1,
+            selectionWidth: 2,
+            arrows: {
+                to: { enabled: true, scaleFactor: 0.45 }
+            },
+            smooth: { enabled: true, type: 'continuous', roundness: 0.5 },
+            font: {
+                color: '#888888',
+                size: 9,
+                face: 'Menlo, monospace',
+                strokeWidth: 3,
+                strokeColor: '#000000',
+                align: 'middle'
+            }
+        },
+        physics: {
+            solver: 'forceAtlas2Based',
+            forceAtlas2Based: {
+                gravitationalConstant: -38,
+                centralGravity: 0.006,
+                springLength: 110,
+                springConstant: 0.14,
+                damping: 0.65
+            },
+            stabilization: { iterations: 200, fit: true },
+            minVelocity: 0.5
+        },
+        interaction: {
+            hover: true,
+            tooltipDelay: 150,
+            navigationButtons: false,
+            keyboard: { enabled: true, bindToWindow: true },
+            multiselect: false,
+            zoomView: true,
+            dragView: true
+        },
+        layout: {
+            improvedLayout: true,
+            randomSeed: 42
+        }
+    };
+
+    var network = new vis.Network(container, data, options);
+
+    network.on('click', function (params) {
+        if (params.nodes.length === 0) {
+            document.getElementById('details-panel').style.display = 'none';
+            return;
+        }
+        var nodeId = params.nodes[0];
+        var node = nodesData.find(function (n) { return n.id === nodeId; });
+        if (!node) return;
+
+        document.getElementById('details-panel').style.display = 'block';
+        document.getElementById('panel-title').innerText = node.label || nodeId;
+
+        var content = document.getElementById('panel-content');
+        var html = '';
+
+        // Основная информация
+        if (node.title) {
+            html += '<div>' + node.title + '</div>';
+        }
+
+        // Мета-информация по типу
+        if (node.meta && Object.keys(node.meta).length > 0) {
+            html += '<table class="kv-table">';
+            var keys = Object.keys(node.meta).slice(0, 15);
+            keys.forEach(function (k) {
+                var v = node.meta[k];
+                if (v === null || v === undefined || v === '') return;
+                if (typeof v === 'object') v = JSON.stringify(v);
+                v = String(v).slice(0, 120);
+                html += '<tr><td>' + escapeHtml(k) + '</td><td>' +
+                        escapeHtml(v) + '</td></tr>';
+            });
+            html += '</table>';
+        }
+
+        // Raw JSON
+        if (node.raw && Object.keys(node.raw).length > 0) {
+            var rawStr = JSON.stringify(node.raw, null, 2);
+            if (rawStr.length > 6000) rawStr = rawStr.slice(0, 6000) + '\n...';
+            html += '<span class="raw-label">Raw JSON</span>';
+            html += '<pre class="raw">' + highlightJson(rawStr) + '</pre>';
+        }
+
+        content.innerHTML = html || '<div class="muted">No data</div>';
+    });
+
+    network.on('hoverNode', function () {
+        container.style.cursor = 'pointer';
+    });
+    network.on('blurNode', function () {
+        container.style.cursor = 'default';
+    });
+
+    // ===== helpers =====
+    function escapeHtml(s) {
+        return String(s)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;');
+    }
+
+    function highlightJson(txt) {
+        var esc = escapeHtml(txt);
+        // keys
+        esc = esc.replace(/"([^"]+)"(\s*:)/g,
+            '<span class="jk">"$1"</span>$2');
+        // strings
+        esc = esc.replace(/:\s*"([^"]*)"/g,
+            ': <span class="js">"$1"</span>');
+        // numbers
+        esc = esc.replace(/:\s*(-?\d+\.?\d*)/g,
+            ': <span class="jn">$1</span>');
+        // bools
+        esc = esc.replace(/:\s*(true|false|null)/g,
+            ': <span class="jb">$1</span>');
+        return esc;
+    }
+
+    // Auto-fit через 300 мс после старта
+    setTimeout(function () { network.fit({ animation: true }); }, 400);
+})();
+</script>
+</body>
+</html>
